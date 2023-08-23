@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-import { createRouter } from '@backstage/plugin-auth-backend';
+ import { DEFAULT_NAMESPACE, stringifyEntityRef } from '@backstage/catalog-model';
+import {
+  createRouter,
+  providers
+} from '@backstage/plugin-auth-backend';
 import { Router } from 'express';
 import { PluginEnvironment } from '../types';
 
@@ -27,5 +31,39 @@ export default async function createPlugin(
     database: env.database,
     discovery: env.discovery,
     tokenManager: env.tokenManager,
+    providerFactories: {
+      oauth2Proxy: providers.oauth2Proxy.create({
+        signIn: {
+          async resolver({ result }, ctx) {
+            const name = result.getHeader('x-forwarded-preferred-username');
+            if (!name) {
+              throw new Error('Request did not contain a user');
+            }
+
+            try {
+              // Attempts to sign in existing user
+              const signedInUser = await ctx.signInWithCatalogUser({
+                entityRef: { name },
+              });
+
+              return Promise.resolve(signedInUser);
+            } catch (e) {
+              // Create stub user
+              const userEntityRef = stringifyEntityRef({
+                kind: 'User',
+                name: name,
+                namespace: DEFAULT_NAMESPACE,
+              });
+              return ctx.issueToken({
+                claims: {
+                  sub: userEntityRef,
+                  ent: [userEntityRef],
+                },
+              });
+            }
+          },
+        },
+      }),
+    },
   });
 }

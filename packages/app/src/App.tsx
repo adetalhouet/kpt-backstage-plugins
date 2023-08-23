@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+ import { ProxiedSignInPage } from '@backstage/core-components';
 import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import React from 'react';
 import { Navigate, Route } from 'react-router';
@@ -28,6 +29,9 @@ import { CadPage } from '@kpt/backstage-plugin-cad';
 
 const app = createApp({
   apis,
+  components: {
+    SignInPage: (props) => <ProxiedSignInPage {...props} provider="oauth2Proxy" />,
+  },
 });
 
 const routes = (
